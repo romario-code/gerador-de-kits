@@ -46,21 +46,42 @@ produtos["etapa"] = produtos["name"].apply(classificar_etapa)
 st.title("🧼 Gerador de Kits MM Clean")
 st.write("Monte kits automáticos baseados em etapas de detalhamento automotivo")
 
+# Inicializar estado do kit
+if 'kit' not in st.session_state:
+    st.session_state.kit = []
+if 'etapas_anteriores' not in st.session_state:
+    st.session_state.etapas_anteriores = []
+
 # Seleção de etapas
 etapas_disponiveis = produtos["etapa"].unique().tolist()
-etapas_selecionadas = st.multiselect("Selecione as etapas para o kit:", etapas_disponiveis)
+etapas_selecionadas = st.multiselect("Selecione as etapas para o kit:", etapas_disponiveis, placeholder="Selecione as etapas")
 
 # Geração do kit
 if etapas_selecionadas:
+    # Verificar se as etapas selecionadas mudaram
+    if set(etapas_selecionadas) != set(st.session_state.etapas_anteriores):
+        st.session_state.kit = []
+        for etapa in etapas_selecionadas:
+            produtos_na_etapa = produtos[produtos["etapa"] == etapa]
+            if not produtos_na_etapa.empty:
+                produto_escolhido = produtos_na_etapa.sample(1).iloc[0]
+                st.session_state.kit.append(produto_escolhido)
+        st.session_state.etapas_anteriores = etapas_selecionadas
+    
+    # Botão para gerar novo kit
+    if st.button("🔄 Gerar Novo Kit"):
+        st.session_state.kit = []
+        for etapa in etapas_selecionadas:
+            produtos_na_etapa = produtos[produtos["etapa"] == etapa]
+            if not produtos_na_etapa.empty:
+                produto_escolhido = produtos_na_etapa.sample(1).iloc[0]
+                st.session_state.kit.append(produto_escolhido)
+    
+    # Exibir kit atual
     st.subheader("Kit Gerado")
-    kit = []
-    for etapa in etapas_selecionadas:
-        produtos_na_etapa = produtos[produtos["etapa"] == etapa]
-        if not produtos_na_etapa.empty:
-            produto_escolhido = produtos_na_etapa.sample(1).iloc[0]
-            kit.append(produto_escolhido)
-
-    for item in kit:
+    for item in st.session_state.kit:
         st.markdown(f"- **{item['etapa']}** → {item['name']}")
 else:
     st.info("Selecione ao menos uma etapa para gerar o kit.")
+    st.session_state.kit = []
+    st.session_state.etapas_anteriores = []
