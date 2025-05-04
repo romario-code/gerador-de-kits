@@ -21,6 +21,14 @@ response = wcapi.get("products", params={"per_page": 100})
 # Transformar em DataFrame
 produtos = pd.DataFrame(response.json())
 
+# Extrair marcas dos produtos
+def extrair_marca(produto):
+    if 'brands' in produto and produto['brands']:
+        return produto['brands'][0]['name']
+    return 'Sem Marca'
+
+produtos['marca'] = produtos.apply(extrair_marca, axis=1)
+
 # Adicionar campo de etapa com base no nome (classificação simples)
 def classificar_etapa(nome):
     nome = nome.lower()
@@ -51,28 +59,38 @@ if 'kit' not in st.session_state:
     st.session_state.kit = []
 if 'etapas_anteriores' not in st.session_state:
     st.session_state.etapas_anteriores = []
+if 'marca_selecionada' not in st.session_state:
+    st.session_state.marca_selecionada = 'Todas'
+
+# Filtro de marca
+marcas_disponiveis = ['Todas'] + sorted(produtos['marca'].unique().tolist())
+marca_selecionada = st.selectbox("Filtrar por marca:", marcas_disponiveis)
+
+# Filtrar produtos por marca selecionada
+produtos_filtrados = produtos if marca_selecionada == 'Todas' else produtos[produtos['marca'] == marca_selecionada]
 
 # Seleção de etapas
-etapas_disponiveis = produtos["etapa"].unique().tolist()
+etapas_disponiveis = produtos_filtrados["etapa"].unique().tolist()
 etapas_selecionadas = st.multiselect("Selecione as etapas para o kit:", etapas_disponiveis, placeholder="Selecione as etapas")
 
 # Geração do kit
 if etapas_selecionadas:
-    # Verificar se as etapas selecionadas mudaram
-    if set(etapas_selecionadas) != set(st.session_state.etapas_anteriores):
+    # Verificar se as etapas selecionadas ou marca mudaram
+    if set(etapas_selecionadas) != set(st.session_state.etapas_anteriores) or marca_selecionada != st.session_state.marca_selecionada:
         st.session_state.kit = []
         for etapa in etapas_selecionadas:
-            produtos_na_etapa = produtos[produtos["etapa"] == etapa]
+            produtos_na_etapa = produtos_filtrados[produtos_filtrados["etapa"] == etapa]
             if not produtos_na_etapa.empty:
                 produto_escolhido = produtos_na_etapa.sample(1).iloc[0]
                 st.session_state.kit.append(produto_escolhido)
         st.session_state.etapas_anteriores = etapas_selecionadas
+        st.session_state.marca_selecionada = marca_selecionada
     
     # Botão para gerar novo kit
     if st.button("🔄 Gerar Novo Kit"):
         st.session_state.kit = []
         for etapa in etapas_selecionadas:
-            produtos_na_etapa = produtos[produtos["etapa"] == etapa]
+            produtos_na_etapa = produtos_filtrados[produtos_filtrados["etapa"] == etapa]
             if not produtos_na_etapa.empty:
                 produto_escolhido = produtos_na_etapa.sample(1).iloc[0]
                 st.session_state.kit.append(produto_escolhido)
