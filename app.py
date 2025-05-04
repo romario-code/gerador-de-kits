@@ -81,6 +81,18 @@ if etapas_selecionadas:
     st.subheader("Kit Gerado")
     for item in st.session_state.kit:
         st.markdown(f"- **{item['etapa']}** → {item['name']}")
+    
+    # Botão para download do kit em CSV
+    if st.session_state.kit:
+        df_kit = pd.DataFrame(st.session_state.kit)[['etapa', 'name', 'regular_price']]
+        df_kit.columns = ['Etapa', 'Produto', 'Preço']
+        csv = df_kit.to_csv(index=False)
+        st.download_button(
+            label="📥 Baixar Kit em CSV",
+            data=csv,
+            file_name="kit_mm_clean.csv",
+            mime="text/csv",
+        )
 else:
     st.info("Selecione ao menos uma etapa para gerar o kit.")
     st.session_state.kit = []
